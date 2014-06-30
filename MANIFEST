@@ -8,3 +8,4 @@ t/schema-composition.t
 t/schema-integer.t
 t/schema-object.t
 t/schema-regex.t
+MANIFEST.SKIP
