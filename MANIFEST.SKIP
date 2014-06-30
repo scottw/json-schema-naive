@@ -1,1 +1,3 @@
 .perl-version
+.git/
+JSON-Schema-Naive-*.tar.gz
