@@ -18,7 +18,6 @@ sub new {
 
     $self->{_errors} = [ ];
     $self->{_schema} = (@_ ? pop : undef);
-    $self->{_params} = undef;
 
     bless $self, $class;
     return $self;
@@ -46,22 +45,20 @@ sub schema {
     return $self->{_schema};
 }
 
-sub params {
-    my $self = shift;
-
-    if (@_) {
-        $self->{_params} = shift;
-    }
-
-    return $self->{_schema};
-}
-
 sub validate {
     my $self = shift;
+    my $obj  = pop;
 
     $self->reset;
 
-    ! $self->error( $self->validate_object( $self->schema, shift ) );
+    $self->schema(shift) if @_;
+
+    unless (ref $self->schema) {
+        $self->error("No schema set; set with \$obj->schema()");
+        return;
+    }
+
+    ! $self->error( $self->validate_object( $self->schema, $obj ) );
 }
 
 sub validate_object {
@@ -268,17 +265,80 @@ JSON::Schema::Naive - A naïve implementation of JSON-Schema
 
   my $s = JSON::Schema::Naive->new($schema);
 
-  $s->validate($document)
+  $s->validate($object)
     or die join("\n\t", "The following errors occurred:", $s->errors);
 
 =head1 DESCRIPTION
 
-B<JSON::Schema::Naive> implements a simplistic subset of the
-JSON-Schema draft.
+B<JSON::Schema::Naive> implements a simplistic subset of JSON-Schema
+v4-draft. In this document, the phrases "schema" and "JSON object" are
+really a native Perl representations of JSON objects, such as you'd
+get from B<decode_json()>. This module does absolutely no JSON
+serialization of any kind--use your favorite JSON module for that.
+
+=head2 Attributes
+
+=over 4
+
+=item B<errors>
+
+The current list of errors (read-only); reset using B<reset()> (see L</Methods>).
+
+=item B<schema([$schema])>
+
+The current schema this object will be validating. Sets ths schema if supplied.
+
+=back
+
+=head2 Methods
+
+=over 4
+
+=item B<new([$schema])>
+
+Creates a new B<JSON::Schema::Naive> object. The following three
+statement sets are equivalent:
+
+    $j = JSON::Schema::Naive->new;
+    $j->schema($schema);
+    $j->validate($obj);
+
+is the same as this:
+
+    $j = JSON::Schema::Naive->new($schema);
+    $j->validate($obj);
+
+and this:
+
+    $j = JSON::Schema::Naive->new;
+    $j->validate($schema => $obj);
+
+=item B<validate([$schema], $obj)>
+
+Validates a JSON object against a schema. If an optional I<$schema>
+argument is supplied, it will be set as the object's default schema,
+as if you had done this:
+
+    $j->schema($schema);
+    $j->validate($obj);
+
+which is the same as:
+
+    $j->validate($schema, $obj);
+
+=item B<reset>
+
+Resets all errors on an object. B<reset()> is called internally
+whenever you invoke B<validate()>, so you'll need to save the errors
+between calls to B<validate()> if you need to collect them.
+
+    $j->reset;
+
+=back
 
 =head1 SEE ALSO
 
-
+L<JSON::Schema>, L<JSON>, L<JSON::XS>, L<Mojo::JSON>
 
 =head1 AUTHOR
 
