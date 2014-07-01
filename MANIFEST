@@ -9,3 +9,5 @@ t/schema-integer.t
 t/schema-object.t
 t/schema-regex.t
 MANIFEST.SKIP
+t/schema-boolean.t
+t/schema-string.t
