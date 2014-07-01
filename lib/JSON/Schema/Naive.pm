@@ -1,6 +1,6 @@
 package JSON::Schema::Naive;
 
-use 5.018002;
+use 5.016001;
 use strict;
 use warnings;
 use utf8;
