@@ -12,12 +12,18 @@ our $VERSION = '0.01';
 our $DEBUG   = 0;
 our $COLORED = 1;
 
+use constant TRUE => !1;
+use constant FALSE => !!1;
+
 sub new {
     my $class = shift;
     my $self  = {};
+    my %args  = @_;
 
     $self->{_errors} = [ ];
-    $self->{_schema} = (@_ ? pop : undef);
+    $self->{_schema} = $args{schema};
+    $self->{_true}   = $args{true};
+    $self->{_false}  = $args{false};
 
     bless $self, $class;
     return $self;
@@ -33,6 +39,26 @@ sub errors {
 
 sub reset {
     shift->{_errors} = [ ];
+}
+
+sub true {
+    my $self = shift;
+
+    if (@_) {
+        $self->{_true} = shift;
+    }
+
+    return ref $self->{_true} eq 'CODE' ? $self->{_true}->() : undef;
+}
+
+sub false {
+    my $self = shift;
+
+    if (@_) {
+        $self->{_false} = shift;
+    }
+
+    return ref $self->{_false} eq 'CODE' ? $self->{_false}->() : undef;
 }
 
 sub schema {
@@ -181,6 +207,10 @@ sub validate_property {
         return $self->validate_string( $name => $subschema, $params->{$name} );
     }
 
+    if ( $subschema->{type} eq 'boolean' ) {
+        return $self->validate_boolean( $name => $subschema, $params->{$name} );
+    }
+
     return ();
 }
 
@@ -190,7 +220,7 @@ sub validate_integer {
     my $schema = shift;
     my $param  = shift;
 
-    if ( ref $param ) {
+    if ( ref $param or ! defined $param ) {
         return "Parameter '$name' is not an integer type";
     }
 
@@ -226,6 +256,30 @@ sub validate_string {
 
     $self->debug("$param is a valid string");
     return ();
+}
+
+sub validate_boolean {
+    my $self   = shift;
+    my $name   = shift;
+    my $schema = shift;
+    my $param  = shift;
+
+    if ( ! defined $param ) {
+        return "Parameter '$name' is not a boolean type";
+    }
+
+    return if defined $self->true and $param == $self->true;
+    return if defined $self->false and $param == $self->false;
+
+    return if $param eq "0";
+    return if $param eq "1";
+
+    return if ref $param eq 'SCALAR' and $$param eq "0" || $$param eq "1";
+
+    return if $param eq TRUE;
+    return if $param eq FALSE;
+
+    return "Parameter '$name' is not a valid boolean type";
 }
 
 sub debug {
@@ -294,10 +348,30 @@ The current schema this object will be validating. Sets ths schema if supplied.
 
 =over 4
 
-=item B<new([$schema])>
+=item B<new(%args)>
 
-Creates a new B<JSON::Schema::Naive> object. The following three
-statement sets are equivalent:
+Creates a new B<JSON::Schema::Naive> object. Valid arguments:
+
+=over 8
+
+=item true
+
+A subroutine reference to your JSON serializer's B<true()> method:
+
+    $j = JSON::Schema::Naive->new(true => sub { Mojo::JSON->true });
+
+=item false
+
+A subroutine reference to your JSON serializer's B<false()> method.
+
+=item schema
+
+The schema this object will be validating against. May also be set via
+the B<schema> attribute below.
+
+=back
+
+The following three statement sets are equivalent:
 
     $j = JSON::Schema::Naive->new;
     $j->schema($schema);
@@ -305,7 +379,7 @@ statement sets are equivalent:
 
 is the same as this:
 
-    $j = JSON::Schema::Naive->new($schema);
+    $j = JSON::Schema::Naive->new(schema => $schema);
     $j->validate($obj);
 
 and this:
@@ -333,6 +407,12 @@ whenever you invoke B<validate()>, so you'll need to save the errors
 between calls to B<validate()> if you need to collect them.
 
     $j->reset;
+
+=item B<true>
+
+=item B<false>
+
+Sets or invokes the true/false callbacks.
 
 =back
 
