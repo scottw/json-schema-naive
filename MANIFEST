@@ -11,3 +11,4 @@ t/schema-regex.t
 MANIFEST.SKIP
 t/schema-boolean.t
 t/schema-string.t
+t/schema-account.t

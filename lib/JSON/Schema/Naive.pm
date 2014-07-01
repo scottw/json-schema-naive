@@ -143,11 +143,15 @@ sub validate_property {
         }
     }
 
+    ## validate missing/required properties
     if ( $subschema->{required}
         and !exists $params->{$name} )
     {
         return ("Parameter '$name' is required");
     }
+
+    ## don't validate a missing property
+    return unless exists $params->{$name};
 
     if ( exists $subschema->{anyOf} ) {
         $self->debug(
