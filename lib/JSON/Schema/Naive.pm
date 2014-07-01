@@ -151,7 +151,12 @@ sub validate_property {
     }
 
     ## don't validate a missing property
-    return unless exists $params->{$name};
+    if ( ! exists $params->{$name} ) {
+        $params->{$name} = $subschema->{default}
+          if exists $subschema->{default};
+
+        return;
+    }
 
     ## not implemented!
     if ( exists $subschema->{oneOf} and ! exists $subschema->{anyOf} ) {
