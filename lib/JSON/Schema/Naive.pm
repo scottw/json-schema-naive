@@ -153,6 +153,11 @@ sub validate_property {
     ## don't validate a missing property
     return unless exists $params->{$name};
 
+    ## not implemented!
+    if ( exists $subschema->{oneOf} and ! exists $subschema->{anyOf} ) {
+        $subschema->{anyOf} = delete $subschema->{oneOf};
+    }
+
     if ( exists $subschema->{anyOf} ) {
         $self->debug(
             "Checking if anyOf condition for '$name' is satisfied"
