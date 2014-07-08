@@ -84,16 +84,24 @@ sub validate {
         return;
     }
 
-    ! $self->error( $self->validate_object( $self->schema, $obj ) );
+    my $sub = (ref $obj eq 'ARRAY' ? 'validate_array' : 'validate_object');
+    ! $self->error( $self->$sub( '' => $self->schema, $obj ) );
 }
 
 sub validate_object {
-    my $self = shift;
+    my $self   = shift;
+    my $name   = shift;
     my $schema = shift;
     my $params = shift;
+#    my $param  = ($name and ref $params eq 'HASH' ? $params->{$name} : $params);
+    my $param  = $params;
 
     unless ($schema->{type} eq 'object') {
         return ("schema is not an object");
+    }
+
+    unless (ref $param eq 'HASH') {
+        return "Parameter '$name' is not an object";
     }
 
     my @errors = ();
@@ -101,10 +109,79 @@ sub validate_object {
     my $properties = $schema->{properties} || {};
     for my $prop ( keys %$properties ) {
         push @errors,
-          $self->validate_property( $prop => $properties->{$prop}, $params );
+          $self->validate_property( $prop => $properties->{$prop}, $param );
     }
 
     return @errors;
+}
+
+sub validate_array {
+    my $self   = shift;
+    my $name   = shift;
+    my $schema = shift;
+    my $params = shift;
+
+    unless ($schema->{type} eq 'array') {
+        return "schema is not an array";
+    }
+
+    unless (ref $params eq 'ARRAY') {
+        return "Parameter '$name' is not an array";
+    }
+
+    my @errors = ();
+
+    ## FIXME: we also want to do tuple validation someday:
+    ## https://spacetelescope.github.io/understanding-json-schema/reference/array.html
+
+    ## list validation
+    my $item = $schema->{items} || {};
+
+    ## FIXME: we should call validate_type() uniformly!
+    my %uniq = ();
+    for my $param ( @$params ) {
+        $uniq{$param}++ unless ref $param;
+        push @errors, $self->validate_type( $name => $item, $param );
+    }
+
+    ## uniqueness check: if items is an array, we can't unique it; if
+    ## the item type is an object we can't unique it
+    if ($schema->{uniqueItems} and ref $item eq 'HASH' and keys %uniq) {
+        if (scalar keys %uniq < scalar @$params) {
+            push @errors, "Parameter '$name' must contain unique items";
+        }
+    }
+
+    return @errors;
+}
+
+sub validate_type {
+    my $self      = shift;
+    my $name      = shift;
+    my $subschema = shift;
+    my $params    = shift;
+
+    if ( $subschema->{type} eq 'object' ) {
+        return $self->validate_object( $name => $subschema, $params );
+    }
+
+    if ( $subschema->{type} eq 'array' ) {
+        return $self->validate_array( $name => $subschema, $params );
+    }
+
+    if ( $subschema->{type} eq 'integer' ) {
+        return $self->validate_integer( $name => $subschema, $params );
+    }
+
+    if ( $subschema->{type} eq 'string' ) {
+        return $self->validate_string( $name => $subschema, $params );
+    }
+
+    if ( $subschema->{type} eq 'boolean' ) {
+        return $self->validate_boolean( $name => $subschema, $params );
+    }
+
+    return ();
 }
 
 sub validate_property {
@@ -160,6 +237,7 @@ sub validate_property {
 
     ## not implemented!
     if ( exists $subschema->{oneOf} and ! exists $subschema->{anyOf} ) {
+        warn "oneOf combinator not implemented; using anyOf instead.\n";
         $subschema->{anyOf} = delete $subschema->{oneOf};
     }
 
@@ -203,36 +281,16 @@ sub validate_property {
         return ("allOf condition not satisfied for '$name'");
     }
 
-    if ( $subschema->{type} eq 'object' ) {
-        $self->debug(
-            "Recursing back into validate_object on property '$name'"
-        );
-        unless (ref $params->{$name}) {
-            return "Parameter '$name' is not an object";
-        }
-        return $self->validate_object( $subschema, $params->{$name} );
-    }
-
-    if ( $subschema->{type} eq 'integer' ) {
-        return $self->validate_integer( $name => $subschema, $params->{$name} );
-    }
-
-    if ( $subschema->{type} eq 'string' ) {
-        return $self->validate_string( $name => $subschema, $params->{$name} );
-    }
-
-    if ( $subschema->{type} eq 'boolean' ) {
-        return $self->validate_boolean( $name => $subschema, $params->{$name} );
-    }
-
-    return ();
+    ## FIXME: we should call validate_type() uniformly!
+    return $self->validate_type( $name => $subschema, $params->{$name} );
 }
 
 sub validate_integer {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
-    my $param  = shift;
+    my $params = shift;
+    my $param = (ref $params eq 'HASH' ? $params->{$name} : $params);
 
     if ( ref $param or ! defined $param ) {
         return "Parameter '$name' is not an integer type";
@@ -258,7 +316,8 @@ sub validate_string {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
-    my $param  = shift;
+    my $params = shift;
+    my $param  = (ref $params eq 'HASH' ? $params->{$name} : $params);
 
     if ( ref $param or ! defined $param ) {
         return "Parameter '$name' is not a string type";
@@ -276,7 +335,8 @@ sub validate_boolean {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
-    my $param  = shift;
+    my $params = shift;
+    my $param  = (ref $params eq 'HASH' ? $params->{$name} : $params);
 
     if ( ! defined $param ) {
         return "Parameter '$name' is not a boolean type";

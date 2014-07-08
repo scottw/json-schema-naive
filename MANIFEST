@@ -13,3 +13,4 @@ t/schema-boolean.t
 t/schema-string.t
 t/schema-account.t
 t/schema-default.t
+t/schema-array.t
