@@ -206,7 +206,7 @@ sub validate_property {
     if ( exists $subschema->{'$ref'} ) {
         my $ptr  = delete $subschema->{'$ref'};
         my @path = split /\// => $ptr;
-        my $doc  = shift @path;            ## normally just '#'
+        my $doc  = shift @path || '';      ## normally just '#'
         ## FIXME: fetch/load the document otherwise
 
         if ( $doc eq '#' ) {               ## this document
