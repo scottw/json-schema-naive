@@ -18,7 +18,10 @@ $s->schema(
 
         type       => "object",
         properties => {
-            added => { '$ref' => "#/definitions/date" }
+            added => {
+                '$ref' => "#/definitions/date",
+                error  => "Property 'added' must be a date"
+            }
         }
     }
 );
@@ -28,6 +31,7 @@ ok( $s->validate( { added => "2014-06-27" } ), "string regex validation" );
 ok( !$s->validate( { added => "2014-06-27 12:23:33" } ),
     "string regex validation fail" );
 
-like( ( $s->errors )[0], qr(does not match pattern), "invalid date" );
+#like( ( $s->errors )[0], qr(does not match pattern), "invalid date" );
+like( ( $s->errors )[0], qr(must be a date), "invalid date" );
 
 exit;

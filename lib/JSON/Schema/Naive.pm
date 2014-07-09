@@ -204,7 +204,7 @@ sub validate_property {
     }
 
     if ( exists $subschema->{'$ref'} ) {
-        my $ptr  = $subschema->{'$ref'};
+        my $ptr  = delete $subschema->{'$ref'};
         my @path = split /\// => $ptr;
         my $doc  = shift @path;            ## normally just '#'
         ## FIXME: fetch/load the document otherwise
@@ -216,7 +216,8 @@ sub validate_property {
                 $node = $node->{$next};    ## FIXME: check for null pointers
             } while @path;
 
-            $subschema = $node;
+            ## merge, not clobber
+            $subschema->{$_} = $node->{$_} for keys %$node;
         }
     }
 
@@ -323,8 +324,19 @@ sub validate_string {
         return "Parameter '$name' is not a string type";
     }
 
+    if ( exists $schema->{minLength} and length $param < $schema->{minLength} ) {
+        return "Parameter '$name' cannot be less than " . $schema->{minLength} . " characters";
+    }
+
+    if ( exists $schema->{maxLength} and length $param > $schema->{maxLength} ) {
+        return "Parameter '$name' cannot be more than " . $schema->{maxLength} . " characters";
+    }
+
     if ( exists $schema->{pattern} and $param !~ $schema->{pattern} ) {
-        return "Parameter '$name' does not match pattern " . $schema->{pattern};
+        ## FIXME: look first at $schema->{errors}->{pattern}, then $schema->{error}, then default
+        return ( $schema->{error}
+                 ? $schema->{error}
+                 : "Parameter '$name' does not match pattern " . $schema->{pattern} );
     }
 
     $self->debug("$param is a valid string");
