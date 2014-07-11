@@ -11,14 +11,14 @@ $s->schema(
     {
         definitions => {
             date => {
-                type    => "string"
+                type => "string"
             }
         },
 
         type       => "object",
         properties => {
             account => {
-                type => "string",
+                type      => "string",
                 minLength => 5,
                 maxLength => 16
             },
@@ -27,19 +27,25 @@ $s->schema(
     }
 );
 
-ok( $s->validate( { added => "the date: 2014-06-27" } ), "string validation" );
+#$JSON::Schema::Naive::DEBUG = 1;
 
-ok( !$s->validate( { added => undef } ),
-    "string validation fail" );
+ok( $s->validate( { account => "foooo", added => "the date: 2014-06-27" } ),
+    "string validation" );
+
+ok( !$s->validate( { added => undef } ), "string validation fail" );
 
 like( ( $s->errors )[0], qr(not a string type), "invalid date" );
 
-ok( $s->validate( { account => "abcde" } ), "string length check" );
-ok( $s->validate( { account => "abcdeabcdeabcdea" } ), "string length check" );
-ok( !$s->validate( { account => "abcd" } ), "string length check fail" );
-like( ($s->errors)[0], qr(cannot be less than 5 ch), "min length error");
+ok( $s->validate( { account => "abcde", added => "yesterday" } ),
+    "string length check" );
+ok( $s->validate( { account => "abcdeabcdeabcdea", added => "yesterday" } ),
+    "string length check" );
+ok( !$s->validate( { account => "abcd", added => "today" } ),
+    "string length check fail" );
+like( ( $s->errors )[0], qr(cannot be less than 5 ch), "min length error" );
 
-ok( !$s->validate( { account => "abcdeabcdeabcdeab" } ), "string length check fail" );
-like( ($s->errors)[0], qr(cannot be more than 16 ch), "max length error");
+ok( !$s->validate( { account => "abcdeabcdeabcdeab", added => 'today' } ),
+    "string length check fail" );
+like( ( $s->errors )[0], qr(cannot be more than 16 ch), "max length error" );
 
 exit;

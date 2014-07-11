@@ -12,7 +12,7 @@ our $VERSION = '0.01';
 our $DEBUG   = 0;
 our $COLORED = 1;
 
-use constant TRUE => !1;
+use constant TRUE  => !1;
 use constant FALSE => !!1;
 
 sub new {
@@ -20,7 +20,7 @@ sub new {
     my $self  = {};
     my %args  = @_;
 
-    $self->{_errors} = [ ];
+    $self->{_errors} = [];
     $self->{_schema} = $args{schema};
     $self->{_true}   = $args{true};
     $self->{_false}  = $args{false};
@@ -30,15 +30,17 @@ sub new {
 }
 
 sub error {
-    push @{shift->{_errors}}, @_;
+    push @{ shift->{_errors} }, @_;
 }
 
 sub errors {
-    return @{shift->{_errors}};
+    return @{ shift->{_errors} };
 }
 
 sub reset {
-    shift->{_errors} = [ ];
+    my $self = shift;
+
+    $self->{_errors} = [];
 }
 
 sub true {
@@ -79,37 +81,90 @@ sub validate {
 
     $self->schema(shift) if @_;
 
-    unless (ref $self->schema) {
+    unless ( ref $self->schema ) {
         $self->error("No schema set; set with \$obj->schema()");
         return;
     }
 
-    my $sub = (ref $obj eq 'ARRAY' ? 'validate_array' : 'validate_object');
-    ! $self->error( $self->$sub( '' => $self->schema, $obj ) );
+    !$self->error(
+        $self->validate_type( '' => $self->schema, $obj => {%$obj} ) );
+}
+
+sub validate_type {
+    my $self      = shift;
+    my $name      = shift;
+    my $subschema = shift;
+    my $object    = shift;    ## original object
+    my $params    = shift;    ## copy of object for messing with
+
+    if ( $subschema->{type} eq 'object' ) {
+        return $self->validate_object( $name => $subschema, $object, $params );
+    }
+
+    if ( $subschema->{type} eq 'array' ) {
+        return $self->validate_array( $name => $subschema, $object, $params );
+    }
+
+    if ( $subschema->{type} eq 'integer' ) {
+        return $self->validate_integer( $name => $subschema, $object, $params );
+    }
+
+    if ( $subschema->{type} eq 'string' ) {
+        return $self->validate_string( $name => $subschema, $object, $params );
+    }
+
+    if ( $subschema->{type} eq 'boolean' ) {
+        return $self->validate_boolean( $name => $subschema, $object, $params );
+    }
+
+    return ();
 }
 
 sub validate_object {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
+    my $object = shift;
     my $params = shift;
-#    my $param  = ($name and ref $params eq 'HASH' ? $params->{$name} : $params);
-    my $param  = $params;
 
-    unless ($schema->{type} eq 'object') {
+    unless ( $schema->{type} eq 'object' ) {
         return ("schema is not an object");
     }
 
-    unless (ref $param eq 'HASH') {
+    unless ( ref $params eq 'HASH' ) {
         return "Parameter '$name' is not an object";
     }
 
     my @errors = ();
 
+    ## http://json-schema.org/latest/json-schema-validation.html#anchor64
+
     my $properties = $schema->{properties} || {};
     for my $prop ( keys %$properties ) {
         push @errors,
-          $self->validate_property( $prop => $properties->{$prop}, $param );
+          $self->validate_property(
+            $prop => $properties->{$prop},
+            $object, $params
+          );
+    }
+
+    ## see if any of the remaining properties match a pattern
+    my $patternProperties = $schema->{patternProperties} || {};
+    for my $prop ( keys %$params ) {
+        for my $pattern ( keys %$patternProperties ) {
+            if ( $prop =~ qr($pattern) ) {
+                push @errors,
+                  $self->validate_property(
+                    $prop => $patternProperties->{$pattern},
+                    $object, $params
+                  );
+            }
+        }
+    }
+
+    ## if $params still has keys, we didn't validate everything--error
+    if ( my @props = keys %$params ) {
+        push @errors, "Unrecognized properties: " . join ", " => @props;
     }
 
     return @errors;
@@ -119,13 +174,14 @@ sub validate_array {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
+    my $object = shift;
     my $params = shift;
 
-    unless ($schema->{type} eq 'array') {
+    unless ( $schema->{type} eq 'array' ) {
         return "schema is not an array";
     }
 
-    unless (ref $params eq 'ARRAY') {
+    unless ( ref $params eq 'ARRAY' ) {
         return "Parameter '$name' is not an array";
     }
 
@@ -137,17 +193,16 @@ sub validate_array {
     ## list validation
     my $item = $schema->{items} || {};
 
-    ## FIXME: we should call validate_type() uniformly!
     my %uniq = ();
-    for my $param ( @$params ) {
+    for my $param (@$params) {
         $uniq{$param}++ unless ref $param;
-        push @errors, $self->validate_type( $name => $item, $param );
+        push @errors, $self->validate_type( $name => $item, $object, $param );
     }
 
     ## uniqueness check: if items is an array, we can't unique it; if
     ## the item type is an object we can't unique it
-    if ($schema->{uniqueItems} and ref $item eq 'HASH' and keys %uniq) {
-        if (scalar keys %uniq < scalar @$params) {
+    if ( $schema->{uniqueItems} and ref $item eq 'HASH' and keys %uniq ) {
+        if ( scalar keys %uniq < scalar @$params ) {
             push @errors, "Parameter '$name' must contain unique items";
         }
     }
@@ -155,62 +210,33 @@ sub validate_array {
     return @errors;
 }
 
-sub validate_type {
-    my $self      = shift;
-    my $name      = shift;
-    my $subschema = shift;
-    my $params    = shift;
-
-    if ( $subschema->{type} eq 'object' ) {
-        return $self->validate_object( $name => $subschema, $params );
-    }
-
-    if ( $subschema->{type} eq 'array' ) {
-        return $self->validate_array( $name => $subschema, $params );
-    }
-
-    if ( $subschema->{type} eq 'integer' ) {
-        return $self->validate_integer( $name => $subschema, $params );
-    }
-
-    if ( $subschema->{type} eq 'string' ) {
-        return $self->validate_string( $name => $subschema, $params );
-    }
-
-    if ( $subschema->{type} eq 'boolean' ) {
-        return $self->validate_boolean( $name => $subschema, $params );
-    }
-
-    return ();
-}
-
 sub validate_property {
     my $self      = shift;
-    my $name      = shift;   ## the name of our property
-    my $subschema = shift;   ## the sub-schema for this property
-    my $params    = shift;   ## an object (FIXME: or occasionally a value only--this bothers me)
+    my $name      = shift;    ## the name of our property
+    my $subschema = shift;    ## the sub-schema for this property
+    my $object    = shift;    ## the original object
+    my $params    = shift;    ## object copy for messing with
+    my $combine =
+      shift;    ## indicates combinator--only delete parameter on success
 
     $self->debug(
-        "Validating property [$name] against params " . Dumper($params)
-    );
+        "Validating property [$name] against params " . Dumper($params) );
 
     $self->debug(
-        "Schema property '$name' is defined as: " . Dumper($subschema)
-    );
+        "Schema property '$name' is defined as: " . Dumper($subschema) );
 
-    ## FIXME: this bothers me
-    unless (ref $params) {
-        return ("Parameter '$name' is not an object type");
+    unless ( ref $params ) {
+        return "Parameter '$name' is not an object type";
     }
 
     if ( exists $subschema->{'$ref'} ) {
         my $ptr  = delete $subschema->{'$ref'};
-        my @path = split /\// => $ptr;
-        my $doc  = shift @path || '';      ## normally just '#'
+        my @path = grep { $_ } split /\// => $ptr;
+        my $doc  = shift @path || '';                ## normally just '#'
         ## FIXME: fetch/load the document otherwise
 
-        if ( $doc eq '#' ) {               ## this document
-            my $node = $self->{_schema};   ## refer to elsewhere in this document
+        if ( $doc eq '#' ) {                         ## this document
+            my $node = $self->{_schema};  ## refer to elsewhere in this document
             do {
                 my $next = shift @path;
                 $node = $node->{$next};    ## FIXME: check for null pointers
@@ -221,36 +247,38 @@ sub validate_property {
         }
     }
 
-    ## validate missing/required properties
-    if ( $subschema->{required}
-        and !exists $params->{$name} )
-    {
-        return ("Parameter '$name' is required");
-    }
+    if ( !exists $object->{$name} ) {
+        delete $params->{$name};           ## eat it
 
-    ## don't validate a missing property
-    if ( ! exists $params->{$name} ) {
-        $params->{$name} = $subschema->{default}
-          if exists $subschema->{default};
+        if ( exists $subschema->{default} ) {
+            $object->{$name} = $subschema->{default};
+            $self->debug(
+                "Parameter $name using default: " . $object->{$name} );
+            return;
+        }
 
-        return;
+        if ( $subschema->{required} ) {
+            return "Parameter '$name' is required";
+        }
     }
 
     ## not implemented!
-    if ( exists $subschema->{oneOf} and ! exists $subschema->{anyOf} ) {
+    if ( exists $subschema->{oneOf} and !exists $subschema->{anyOf} ) {
         warn "oneOf combinator not implemented; using anyOf instead.\n";
         $subschema->{anyOf} = delete $subschema->{oneOf};
     }
 
     if ( exists $subschema->{anyOf} ) {
-        $self->debug(
-            "Checking if anyOf condition for '$name' is satisfied"
-        );
+        $self->debug("Checking if anyOf condition for '$name' is satisfied");
 
-        my @err = ();
+        my @err   = ();
         my $anyOf = grep {
-            $self->debug( "anyOf condition '$name' against " . Dumper($params) );
-            @err = $self->validate_property( $name => $_, $params );
+            $self->debug(
+                "anyOf condition '$name' against " . Dumper($params) );
+            @err = $self->validate_property(
+                $name => $_,
+                $object, $params, my $combine = 1
+            );
             !scalar @err
         } @{ $subschema->{anyOf} };
 
@@ -258,7 +286,8 @@ sub validate_property {
             $self->debug("anyOf condition is satisfied");
         }
         else {
-            $self->debug("anyOf condition failed:\n\t" . join("\n\t", @err));
+            $self->debug(
+                "anyOf condition failed:\n\t" . join( "\n\t", @err ) );
         }
 
         return () if $anyOf;
@@ -266,13 +295,14 @@ sub validate_property {
     }
 
     if ( exists $subschema->{allOf} ) {
-        $self->debug(
-            "Checking of allOf condition for '$name' is satisfied"
-        );
+        $self->debug("Checking of allOf condition for '$name' is satisfied");
 
-        my $allOf =
-          !map { $self->validate_property( $name => $_, $params ) }
-          @{ $subschema->{allOf} };
+        my $allOf = !map {
+            $self->validate_property(
+                $name => $_,
+                $object, $params, my $combine = 1
+              )
+        } @{ $subschema->{allOf} };
 
         if ($allOf) {
             $self->debug("allOf condition is satisfied");
@@ -282,18 +312,27 @@ sub validate_property {
         return ("allOf condition not satisfied for '$name'");
     }
 
-    ## FIXME: we should call validate_type() uniformly!
-    return $self->validate_type( $name => $subschema, $params->{$name} );
+    my @err = $self->validate_type(
+        $name => $subschema,
+        $object->{$name}, $params->{$name}
+    );
+
+    if ( !scalar @err or !$combine ) {
+        delete $params->{$name};
+    }
+
+    return @err;
 }
 
 sub validate_integer {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
+    my $object = shift;
     my $params = shift;
-    my $param = (ref $params eq 'HASH' ? $params->{$name} : $params);
+    my $param  = ( ref $params eq 'HASH' ? $params->{$name} : $params );
 
-    if ( ref $param or ! defined $param ) {
+    if ( ref $param or !defined $param ) {
         return "Parameter '$name' is not an integer type";
     }
 
@@ -317,26 +356,37 @@ sub validate_string {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
+    my $object = shift;
     my $params = shift;
-    my $param  = (ref $params eq 'HASH' ? $params->{$name} : $params);
+    my $param  = ( ref $params eq 'HASH' ? $params->{$name} : $params );
 
-    if ( ref $param or ! defined $param ) {
+    if ( ref $param or !defined $param ) {
         return "Parameter '$name' is not a string type";
     }
 
-    if ( exists $schema->{minLength} and length $param < $schema->{minLength} ) {
-        return "Parameter '$name' cannot be less than " . $schema->{minLength} . " characters";
+    if ( exists $schema->{minLength} and length $param < $schema->{minLength} )
+    {
+        return
+            "Parameter '$name' cannot be less than "
+          . $schema->{minLength}
+          . " characters";
     }
 
-    if ( exists $schema->{maxLength} and length $param > $schema->{maxLength} ) {
-        return "Parameter '$name' cannot be more than " . $schema->{maxLength} . " characters";
+    if ( exists $schema->{maxLength} and length $param > $schema->{maxLength} )
+    {
+        return
+            "Parameter '$name' cannot be more than "
+          . $schema->{maxLength}
+          . " characters";
     }
 
     if ( exists $schema->{pattern} and $param !~ $schema->{pattern} ) {
         ## FIXME: look first at $schema->{errors}->{pattern}, then $schema->{error}, then default
-        return ( $schema->{error}
-                 ? $schema->{error}
-                 : "Parameter '$name' does not match pattern " . $schema->{pattern} );
+        return (
+              $schema->{error}
+            ? $schema->{error}
+            : "Parameter '$name' does not match pattern " . $schema->{pattern}
+        );
     }
 
     $self->debug("$param is a valid string");
@@ -347,14 +397,15 @@ sub validate_boolean {
     my $self   = shift;
     my $name   = shift;
     my $schema = shift;
+    my $object = shift;
     my $params = shift;
-    my $param  = (ref $params eq 'HASH' ? $params->{$name} : $params);
+    my $param  = ( ref $params eq 'HASH' ? $params->{$name} : $params );
 
-    if ( ! defined $param ) {
+    if ( !defined $param ) {
         return "Parameter '$name' is not a boolean type";
     }
 
-    return if defined $self->true and $param == $self->true;
+    return if defined $self->true  and $param == $self->true;
     return if defined $self->false and $param == $self->false;
 
     return if $param eq "0";
@@ -376,13 +427,13 @@ sub debug {
     my @msg  = split /\r?\n/ => $msg;
 
     my $level = 0;
-    while ( defined((caller($level))[0]) ) { $level++ }
+    while ( defined( ( caller($level) )[0] ) ) { $level++ }
 
-    my $sp = (">" x $level);
+    my $sp = ( ">" x $level );
 
     if ($COLORED) {
         my @colors = qw/ white magenta cyan blue green /;
-        $sp = colored($sp, $colors[$level % scalar @colors]);
+        $sp = colored( $sp, $colors[ $level % scalar @colors ] );
     }
 
     $sp .= "    ";

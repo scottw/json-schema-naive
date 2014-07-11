@@ -29,6 +29,9 @@ $s->schema(
                 default => 0,
                 description =>
 "set to epoch time when account was/will be disabled; set to `0` to enable"
+            },
+            create_domain => {
+                type => "boolean"
             }
         }
     }

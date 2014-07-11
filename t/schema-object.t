@@ -45,6 +45,7 @@ like( ( $s->errors )[0], qr('reason' is not an object), "invalid type" );
 ok( !$s->validate( { reason => { code => "string", message => ["foo"] } } ),
     "object invalid" );
 is( scalar( $s->errors ), 2, "error list" );
+
 like(
     ( $s->errors )[0],
     qr((?:'code' is not an integer|'message' is not a string)),
