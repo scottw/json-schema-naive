@@ -248,7 +248,6 @@ sub validate_property {
     }
 
     if ( !exists $object->{$name} ) {
-        delete $params->{$name};           ## eat it
 
         if ( exists $subschema->{default} ) {
             $object->{$name} = $subschema->{default};
@@ -260,6 +259,8 @@ sub validate_property {
         if ( $subschema->{required} ) {
             return "Parameter '$name' is required";
         }
+
+        return;    ## nothing to validate
     }
 
     ## not implemented!

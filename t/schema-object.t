@@ -12,18 +12,21 @@ $s->schema(
         type       => "object",
         properties => {
             reason => {
-                "type"       => "object",
-                "required"   => 1,
-                "properties" => {
-                    "code" => {
-                        "type"     => "integer",
-                        "minimum"  => 100,
-                        "maximum"  => 999,
-                        "required" => 1
+                type       => "object",
+                required   => 1,
+                properties => {
+                    code => {
+                        type     => "integer",
+                        minimum  => 100,
+                        maximum  => 999,
+                        required => 1
                     },
-                    "message" => {
-                        "type"     => "string",
-                        "required" => 1
+                    message => {
+                        type     => "string",
+                        required => 1
+                    },
+                    blanket => {
+                        type => "boolean"
                     }
                 }
             }
