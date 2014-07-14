@@ -7,6 +7,7 @@ use utf8;
 use feature 'say';
 use Term::ANSIColor;
 use Data::Dumper;
+use Storable 'dclone';
 
 our $VERSION = '0.01';
 our $DEBUG   = 0;
@@ -86,8 +87,10 @@ sub validate {
         return;
     }
 
+    ## make a deep copy of the object we can tamper with; we promise
+    ## not to touch $obj except to set a default value where defined
     !$self->error(
-        $self->validate_type( '' => $self->schema, $obj => {%$obj} ) );
+        $self->validate_type( '' => $self->schema, $obj => dclone($obj) ) );
 }
 
 sub validate_type {
@@ -225,6 +228,8 @@ sub validate_property {
     $self->debug(
         "Schema property '$name' is defined as: " . Dumper($subschema) );
 
+    $self->debug("Incoming object: " . Dumper($object));
+
     unless ( ref $params ) {
         return "Parameter '$name' is not an object type";
     }
@@ -270,7 +275,7 @@ sub validate_property {
     }
 
     if ( exists $subschema->{anyOf} ) {
-        $self->debug("Checking if anyOf condition for '$name' is satisfied");
+        $self->debug("Checking if anyOf condition for '$name' is satisfied (object: " . Dumper($object) . ")");
 
         my @err   = ();
         my $anyOf = grep {
@@ -296,7 +301,7 @@ sub validate_property {
     }
 
     if ( exists $subschema->{allOf} ) {
-        $self->debug("Checking of allOf condition for '$name' is satisfied");
+        $self->debug("Checking of allOf condition for '$name' is satisfied (object: " . Dumper($object) . ")");
 
         my $allOf = !map {
             $self->validate_property(
@@ -319,8 +324,11 @@ sub validate_property {
     );
 
     if ( !scalar @err or !$combine ) {
+        $self->debug("Removing '$name' from parameters");
         delete $params->{$name};
     }
+
+    $self->debug("After property validation, object: " . Dumper($object));
 
     return @err;
 }

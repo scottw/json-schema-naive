@@ -1,7 +1,8 @@
 #-*- mode: cperl -*-#
 use strict;
 use warnings;
-use Test::More tests => 5;
+use Test::More tests => 8;
+use Data::Dumper;
 
 BEGIN { use utf8; use_ok('JSON::Schema::Naive') }
 
@@ -64,5 +65,58 @@ ok( !$s->validate( { error_reason => "some reason" } ),
     "composition validate error" );
 
 like( ( $s->errors )[0], qr('added' is required), "date required" );
+
+$s->schema(
+    {
+        definitions => {
+            http_reason => {
+                type       => "object",
+                properties => {
+                    code => {
+                        type    => "integer",
+                        minimum => 100,
+                        maximum => 999
+                    },
+                    message => {
+                        type => "string"
+                    }
+                }
+            }
+        },
+
+        type       => "object",
+        properties => {
+            account => {
+                type => "string"
+            },
+            disabled => {
+                type    => "integer",
+                minimum => 0
+            },
+            disabled_reason => {
+                oneOf => [
+                    { '$ref' => "#/definitions/http_reason" },
+                    {
+                        type      => "string",
+                        minLength => 0,
+                        maxLength => 50
+                    }
+                ]
+            }
+        }
+    }
+);
+
+my $obj = {
+    account         => "foo",
+    disabled        => 1,
+    disabled_reason => { code => 402, message => "Need more money" }
+};
+
+#$JSON::Schema::Naive::DEBUG = 1;
+
+ok( $s->validate($obj), "object composition" );
+is( ref($obj->{disabled_reason}), "HASH", "object intact" );
+is( $obj->{disabled_reason}->{code}, 402, "object intact" );
 
 exit;
