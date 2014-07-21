@@ -257,7 +257,7 @@ sub validate_property {
         if ( exists $subschema->{default} ) {
             $object->{$name} = $subschema->{default};
             $self->debug(
-                "Parameter $name using default: " . $object->{$name} );
+                "Parameter $name using default: " . (defined $object->{$name} ? $object->{$name} : "(undefined)") );
             return;
         }
 
