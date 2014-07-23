@@ -15,3 +15,4 @@ t/schema-account.t
 t/schema-default.t
 t/schema-array.t
 t/schema-patternProperties.t
+t/schema-query.t
