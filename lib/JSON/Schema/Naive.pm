@@ -142,6 +142,15 @@ sub validate_object {
 
     ## http://json-schema.org/latest/json-schema-validation.html#anchor64
 
+    my $query      = $schema->{query} || {};
+    for my $prop ( keys %$query ) {
+        push @errors,
+          $self->validate_property(
+            $prop => $query->{$prop},
+            $object, $params
+          );
+    }
+
     my $properties = $schema->{properties} || {};
     for my $prop ( keys %$properties ) {
         push @errors,
