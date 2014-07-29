@@ -13,8 +13,8 @@ our $VERSION = '0.01';
 our $DEBUG   = 0;
 our $COLORED = 1;
 
-use constant TRUE  => !1;
-use constant FALSE => !!1;
+use constant TRUE  => !!1;
+use constant FALSE => !1;
 
 sub new {
     my $class = shift;
@@ -423,9 +423,6 @@ sub validate_boolean {
         return "Parameter '$name' is not a boolean type";
     }
 
-    return if defined $self->true  and $param == $self->true;
-    return if defined $self->false and $param == $self->false;
-
     return if $param eq "0";
     return if $param eq "1";
 
@@ -433,6 +430,13 @@ sub validate_boolean {
 
     return if $param eq TRUE;
     return if $param eq FALSE;
+
+    return if lc $param eq "true";
+    return if lc $param eq "false";
+
+    ## NOTE: if you use == here instead of eq, you get odd results, like "true" == 0
+    return if defined $self->true  and $param eq $self->true;
+    return if defined $self->false and $param eq $self->false;
 
     return "Parameter '$name' is not a valid boolean type";
 }

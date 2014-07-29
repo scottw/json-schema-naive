@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Test::More tests => 3;
+use Test::More tests => 6;
 
 BEGIN { use_ok('JSON::Schema::Naive') }
 
@@ -28,7 +28,8 @@ $s->schema(
         type       => "object",
         properties => {
             is_admin => {
-                type => "boolean"
+                type => "boolean",
+                required => 1
             }
         }
     }
@@ -36,8 +37,14 @@ $s->schema(
 
 my $value = SomeJSON::true;
 
+ok( JSON::Schema::Naive::TRUE, "true" );
+
 ok( $s->validate( { is_admin => $value } ), "valid boolean" );
 
 ok( ! $s->validate( { is_admin => undef } ), "invalid boolean" );
+
+ok( $s->validate( { is_admin => !!1 } ), "valid boolean" );
+
+ok( $s->validate( { is_admin => "true" } ), "valid boolean" );
 
 exit;
