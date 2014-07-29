@@ -100,24 +100,26 @@ sub validate_type {
     my $object    = shift;    ## original object
     my $params    = shift;    ## copy of object for messing with
 
-    if ( $subschema->{type} eq 'object' ) {
-        return $self->validate_object( $name => $subschema, $object, $params );
-    }
+    if ( $subschema->{type} ) {
+        if ( $subschema->{type} eq 'object' ) {
+            return $self->validate_object( $name => $subschema, $object, $params );
+        }
 
-    if ( $subschema->{type} eq 'array' ) {
-        return $self->validate_array( $name => $subschema, $object, $params );
-    }
+        if ( $subschema->{type} eq 'array' ) {
+            return $self->validate_array( $name => $subschema, $object, $params );
+        }
 
-    if ( $subschema->{type} eq 'integer' ) {
-        return $self->validate_integer( $name => $subschema, $object, $params );
-    }
+        if ( $subschema->{type} eq 'integer' ) {
+            return $self->validate_integer( $name => $subschema, $object, $params );
+        }
 
-    if ( $subschema->{type} eq 'string' ) {
-        return $self->validate_string( $name => $subschema, $object, $params );
-    }
+        if ( $subschema->{type} eq 'string' ) {
+            return $self->validate_string( $name => $subschema, $object, $params );
+        }
 
-    if ( $subschema->{type} eq 'boolean' ) {
-        return $self->validate_boolean( $name => $subschema, $object, $params );
+        if ( $subschema->{type} eq 'boolean' ) {
+            return $self->validate_boolean( $name => $subschema, $object, $params );
+        }
     }
 
     return ();
