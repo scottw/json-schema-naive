@@ -431,8 +431,9 @@ sub validate_boolean {
     return if $param eq TRUE;
     return if $param eq FALSE;
 
-    return if lc $param eq "true";
-    return if lc $param eq "false";
+    ## this was added for Nathan, thinking PHP wasn't encoding booleans coorectly
+#     return if lc $param eq "true";
+#     return if lc $param eq "false";
 
     ## NOTE: if you use == here instead of eq, you get odd results, like "true" == 0
     return if defined $self->true  and $param eq $self->true;

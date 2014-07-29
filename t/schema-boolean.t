@@ -45,6 +45,6 @@ ok( ! $s->validate( { is_admin => undef } ), "invalid boolean" );
 
 ok( $s->validate( { is_admin => !!1 } ), "valid boolean" );
 
-ok( $s->validate( { is_admin => "true" } ), "valid boolean" );
+ok( ! $s->validate( { is_admin => "true" } ), "valid boolean" );
 
 exit;
