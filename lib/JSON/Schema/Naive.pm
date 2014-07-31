@@ -25,6 +25,7 @@ sub new {
     $self->{_schema} = $args{schema};
     $self->{_true}   = $args{true};
     $self->{_false}  = $args{false};
+    $self->{_normalize} = { };
 
     bless $self, $class;
     return $self;
@@ -64,6 +65,16 @@ sub false {
     return ref $self->{_false} eq 'CODE' ? $self->{_false}->() : undef;
 }
 
+sub normalize {
+    my $self = shift;
+
+    if (@_) {
+        $self->{_normalize} = shift;
+    }
+
+    return $self->{_normalize};
+}
+
 sub schema {
     my $self = shift;
 
@@ -89,8 +100,7 @@ sub validate {
 
     ## make a deep copy of the object we can tamper with; we promise
     ## not to touch $obj except to set a default value where defined
-    !$self->error(
-        $self->validate_type( '' => $self->schema, $obj => dclone($obj) ) );
+    !$self->error($self->validate_type( '' => $self->schema, $obj => dclone($obj) ));
 }
 
 sub validate_type {
@@ -334,6 +344,14 @@ sub validate_property {
         $object->{$name}, $params->{$name}
     );
 
+    ## FIXME: this has no equivalent in validate_array()
+    scalar @err or
+      $subschema->{type} and $subschema->{type} eq 'boolean' and
+        ref $self->normalize and
+          exists $self->normalize->{boolean} and
+            ref $self->normalize->{boolean} eq 'CODE' and
+              $self->normalize->{boolean}->($object->{$name});
+
     if ( !scalar @err or !$combine ) {
         $self->debug("Removing '$name' from parameters");
         delete $params->{$name};
@@ -425,23 +443,21 @@ sub validate_boolean {
         return "Parameter '$name' is not a boolean type";
     }
 
-    return if $param eq "0";
-    return if $param eq "1";
-
-    return if ref $param eq 'SCALAR' and $$param eq "0" || $$param eq "1";
-
-    return if $param eq TRUE;
-    return if $param eq FALSE;
-
-    ## this was added for Nathan, thinking PHP wasn't encoding booleans coorectly
-#     return if lc $param eq "true";
-#     return if lc $param eq "false";
+    my $rv = "Parameter '$name' is not a valid boolean type";
 
     ## NOTE: if you use == here instead of eq, you get odd results, like "true" == 0
-    return if defined $self->true  and $param eq $self->true;
-    return if defined $self->false and $param eq $self->false;
+    $rv && undef $rv if defined $self->true  and $param eq $self->true;
+    $rv && undef $rv if defined $self->false and $param eq $self->false;
 
-    return "Parameter '$name' is not a valid boolean type";
+    $rv && undef $rv if $param eq "0";
+    $rv && undef $rv if $param eq "1";
+
+    $rv && undef $rv if ref $param eq 'SCALAR' and $$param eq "0" || $$param eq "1";
+
+    $rv && undef $rv if $param eq TRUE;
+    $rv && undef $rv if $param eq FALSE;
+
+    return ($rv ? $rv : ());
 }
 
 sub debug {
