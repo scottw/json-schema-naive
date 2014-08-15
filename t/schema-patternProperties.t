@@ -39,6 +39,6 @@ like( ($s->errors)[0], qr(does not match pattern), "pattern property error" );
 
 ok( !$s->validate( { 'bro-seph' => 'me', fo => "bar" } ),
     "pattern property failed" );
-like( ($s->errors)[0], qr(unrecognized properties: fo\b)i, "pattern property error" );
+like( ($s->errors)[1], qr(unrecognized properties: fo\b)i, "pattern property error" );
 
 exit;

@@ -1,7 +1,7 @@
 #-*- mode: cperl -*-#
 use strict;
 use warnings;
-use Test::More tests => 9;
+use Test::More tests => 14;
 
 BEGIN { use_ok('JSON::Schema::Naive') }
 
@@ -39,6 +39,16 @@ ok( $s->validate( { reason => { code => 200, message => "fooey" } } ),
 
 ok( !$s->validate( { horse => "fly" } ), "object invalid" );
 like( ( $s->errors )[0], qr('reason' is required), "missing required field" );
+like( ( $s->errors )[-1], qr(Unrecognized properties: horse)i, "unrecognized parameter" );
+
+{
+    ok( !$s->validate( { reason => { code => 123, message => "sorry" }, horse => "fly" } ), "object invalid" );
+    like( ( $s->errors )[-1], qr(Unrecognized properties: horse)i, "unrecognized parameter" );
+
+    local $JSON::Schema::Naive::ERROR_UNRECOGNIZED_PARAMS;
+    ok( $s->validate( { reason => { code => 123, message => "sorry" }, horse => "fly" } ), "object invalid" );
+    like( ( $s->warnings )[-1], qr(Unrecognized properties: horse)i, "unrecognized parameter" );
+}
 
 #$JSON::Schema::Naive::DEBUG=1;
 
