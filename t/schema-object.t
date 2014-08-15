@@ -48,7 +48,7 @@ like( ( $s->errors )[-1], qr(Unrecognized properties: horse)i, "unrecognized par
 
 #    say STDERR "ERRORS: " . join "\n" => $s->errors;
 
-    local $JSON::Schema::Naive::ERROR_UNRECOGNIZED_PARAMS;
+    local $JSON::Schema::Naive::WARN_UNRECOGNIZED_PARAMS = 1;
     ok( $s->validate( { reason => { code => 123, message => "sorry" }, horse => "fly" } ), "object invalid" );
     like( ( $s->warnings )[-1], qr(Unrecognized properties: horse)i, "unrecognized parameter" );
 }

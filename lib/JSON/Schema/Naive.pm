@@ -12,7 +12,7 @@ use Storable 'dclone';
 our $VERSION                   = '0.01';
 our $DEBUG                     = 0;
 our $COLORED                   = 1;
-our $ERROR_UNRECOGNIZED_PARAMS = 1;
+our $WARN_UNRECOGNIZED_PARAMS  = 0;
 
 use constant TRUE  => !!1;
 use constant FALSE => !1;
@@ -190,9 +190,9 @@ sub validate_object {
 
     ## if $params still has keys, we didn't validate everything--error
     if (my @props = keys %$params) {
-        push @{$ERROR_UNRECOGNIZED_PARAMS ? \@errors : $self->{_warnings}},
+        push @{$WARN_UNRECOGNIZED_PARAMS ? $self->{_warnings} : \@errors},
           "Incoming parameters: " . join ', ' => map { "$_ => $params->{$_}" } keys %$params;
-        push @{$ERROR_UNRECOGNIZED_PARAMS ? \@errors : $self->{_warnings}},
+        push @{$WARN_UNRECOGNIZED_PARAMS ? $self->{_warnings} : \@errors},
           "Unrecognized properties: " . join ", " => @props;
     }
 
