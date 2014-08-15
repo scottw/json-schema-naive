@@ -191,7 +191,7 @@ sub validate_object {
     ## if $params still has keys, we didn't validate everything--error
     if (my @props = keys %$params) {
         push @{$ERROR_UNRECOGNIZED_PARAMS ? \@errors : $self->{_warnings}},
-          "Incoming parameters: " . Dumper($params);
+          "Incoming parameters: " . join ', ' => map { "$_ => $params->{$_}" } keys %$params;
         push @{$ERROR_UNRECOGNIZED_PARAMS ? \@errors : $self->{_warnings}},
           "Unrecognized properties: " . join ", " => @props;
     }

@@ -42,8 +42,11 @@ like( ( $s->errors )[0], qr('reason' is required), "missing required field" );
 like( ( $s->errors )[-1], qr(Unrecognized properties: horse)i, "unrecognized parameter" );
 
 {
-    ok( !$s->validate( { reason => { code => 123, message => "sorry" }, horse => "fly" } ), "object invalid" );
-    like( ( $s->errors )[-1], qr(Unrecognized properties: horse)i, "unrecognized parameter" );
+    ok( !$s->validate( { reason => { code => 123, message => "sorry" }, horse => "fly", dog => { dig => "dug" } } ),
+        "object invalid" );
+    like( ( $s->errors )[-1], qr(Unrecognized properties)i, "unrecognized parameter" );
+
+#    say STDERR "ERRORS: " . join "\n" => $s->errors;
 
     local $JSON::Schema::Naive::ERROR_UNRECOGNIZED_PARAMS;
     ok( $s->validate( { reason => { code => 123, message => "sorry" }, horse => "fly" } ), "object invalid" );
