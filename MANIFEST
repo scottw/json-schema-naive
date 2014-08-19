@@ -7,6 +7,7 @@ t/schema-anyOf.t
 t/schema-composition.t
 t/schema-integer.t
 t/schema-object.t
+t/schema-oneOf.t
 t/schema-regex.t
 MANIFEST.SKIP
 t/schema-boolean.t

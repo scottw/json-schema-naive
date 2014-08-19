@@ -9,7 +9,7 @@ use Term::ANSIColor;
 use Data::Dumper;
 use Storable 'dclone';
 
-our $VERSION                  = '0.01';
+our $VERSION                  = '0.02';
 our $DEBUG                    = 0;
 our $COLORED                  = 1;
 our $WARN_UNRECOGNIZED_PARAMS = 0;
@@ -204,7 +204,10 @@ sub validate_object {
         }
     }
 
+    ## FIXME: implement object-level combinators here
+
     ## FIXME: implement additionalProperties here
+    my $additionalProperties = $schema->{additionalProperties} // {};
 
     ## if $params still has keys, we didn't validate everything--error
     if ( my @props = keys %$params ) {
@@ -317,7 +320,6 @@ sub validate_property {
         return;    ## nothing to validate
     }
 
-    ## FIXME: working here
     if ( exists $subschema->{oneOf} and !exists $subschema->{anyOf} ) {
         $self->debug("Checking if oneOf condition for '$name' is satisfied (object: "
                      . Dumper($object)
@@ -338,9 +340,6 @@ sub validate_property {
 
         return () if $oneOf;
         return ("oneOf condition not satisfied for '$name'");
-
-#         warn "oneOf combinator not implemented; using anyOf instead.\n";
-#         $subschema->{anyOf} = delete $subschema->{oneOf};
     }
 
     if ( exists $subschema->{anyOf} ) {

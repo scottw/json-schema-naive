@@ -1,7 +1,7 @@
 #-*- mode: cperl -*-#
 use strict;
 use warnings;
-use Test::More tests => 8;
+use Test::More tests => 4;
 
 BEGIN { use_ok('JSON::Schema::Naive') }
 
@@ -46,6 +46,10 @@ ok(
 );
 
 ok( ! $s->validate( { } ), "oneOf invalid" );
+
+exit;
+
+## FIXME: this style would be nice for implementing exclusive parameters
 
 ## another style: validation by reference
 $s->schema(
