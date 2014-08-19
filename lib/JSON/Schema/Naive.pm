@@ -204,6 +204,8 @@ sub validate_object {
         }
     }
 
+    ## FIXME: implement additionalProperties here
+
     ## if $params still has keys, we didn't validate everything--error
     if ( my @props = keys %$params ) {
         push @{ $WARN_UNRECOGNIZED_PARAMS ? $self->{_warnings} : \@errors },
@@ -315,10 +317,30 @@ sub validate_property {
         return;    ## nothing to validate
     }
 
-    ## not implemented!
+    ## FIXME: working here
     if ( exists $subschema->{oneOf} and !exists $subschema->{anyOf} ) {
-        warn "oneOf combinator not implemented; using anyOf instead.\n";
-        $subschema->{anyOf} = delete $subschema->{oneOf};
+        $self->debug("Checking if oneOf condition for '$name' is satisfied (object: "
+                     . Dumper($object)
+                     . ")" );
+
+        my @err = ();
+        my $oneOf = 1 == grep {
+            @err = $self->validate_property(
+                $name => $_,
+                $object, $params, my $combine = 1
+            );
+            ! scalar @err;
+        } @{ $subschema->{oneOf} };
+
+        if ($oneOf) {
+            $self->debug("oneOf condition is satisfied");
+        }
+
+        return () if $oneOf;
+        return ("oneOf condition not satisfied for '$name'");
+
+#         warn "oneOf combinator not implemented; using anyOf instead.\n";
+#         $subschema->{anyOf} = delete $subschema->{oneOf};
     }
 
     if ( exists $subschema->{anyOf} ) {
@@ -328,7 +350,7 @@ sub validate_property {
               . ")" );
 
         my @err   = ();
-        my $anyOf = grep {
+        my $anyOf = !!grep {
             $self->debug(
                 "anyOf condition '$name' against " . Dumper($params) );
             @err = $self->validate_property(
