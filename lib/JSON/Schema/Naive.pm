@@ -647,7 +647,7 @@ L<JSON::Schema>, L<JSON>, L<JSON::XS>, L<Mojo::JSON>
 
 =head1 AUTHOR
 
-Scott Wiersdorf, E<lt>scott@betterservers.comE<gt>
+Scott Wiersdorf, E<lt>scott@perlcode.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
