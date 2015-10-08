@@ -536,7 +536,7 @@ __END__
 
 =head1 NAME
 
-JSON::Schema::Naive - A naïve implementation of JSON-Schema
+JSON::Schema::Naive - A naïve implementation of JSON-Schema v4 spec
 
 =head1 SYNOPSIS
 
@@ -546,6 +546,11 @@ JSON::Schema::Naive - A naïve implementation of JSON-Schema
 
   $s->validate($object)
     or die join("\n\t", "The following errors occurred:", $s->errors);
+
+=head1 CAVEAT
+
+* * * This is proof-of-concept, alpha quality software. The interface
+      and semantics here may change at any time without warning. * * *
 
 =head1 DESCRIPTION
 
